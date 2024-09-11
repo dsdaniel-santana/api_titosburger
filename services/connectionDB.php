@@ -1,6 +1,6 @@
 <?php
 
-class conexaoDB {
+class connectionDB {
     protected static $db;
 
     private function __construct() {
@@ -19,9 +19,9 @@ class conexaoDB {
         }        
     }
 
-    public static function connectar(){
+    public static function connect(){
         if(!self::$db){
-            new conexaoDB();
+            new connectionDB();
         }
         return self::$db;
     }
