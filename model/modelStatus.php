@@ -1,5 +1,5 @@
 <?php
-require_once("../services/conenectionDB.php");
+require_once("../services/connectionDB.php");
 
 class modelStatus{
     
@@ -7,8 +7,8 @@ class modelStatus{
     public function getAll(){
         try {
             $conn = connectionDB::connect();
-            $conn->query("SELECT*FROM tblStatus");
-            $result = $conn->fetchAll(PDO::FETCH_ASSOC);
+            $list = $conn->query("SELECT*FROM tblStatus");
+            $result = $list->fetchAll(PDO::FETCH_ASSOC);
 
             return $result;
 
@@ -20,11 +20,17 @@ class modelStatus{
     //Listar Status por ID
     public function getById($idStatus){
         try {
-            $conn = connectionDB::connect();
-            $conn->prepare("SELECT * FROM tblStatus WHERE id_status = :id_status");
-            $conn->bindParam('id_status', filter_var($idStatus, FILTER_SANITIZE_NUMBER_INT));
-            $result = $conn->fetch(PDO::FETCH_ASSOC);
 
+            $id = filter_var($idStatus, FILTER_SANITIZE_NUMBER_INT);
+
+
+            $conn = connectionDB::connect();
+            $search = $conn->prepare("SELECT * FROM tblStatus WHERE id_status = :id_status");
+            $search->bindParam('id_status', $id);
+            $search->execute();
+            $result = $search->fetch(PDO::FETCH_ASSOC);
+
+            return $result;
         } catch (PDOException $e) {
             return false;
         }
@@ -33,10 +39,13 @@ class modelStatus{
     //inserir um novo Status
     public function save ($data){
         try {
+
+            $status_name = htmlspecialchars($data["status"], ENT_NOQUOTES);
+
             $conn = connectionDB::connect();
-            $conn->prepare("INSERT INTO tblStatus(status, created_at) VALUES (:status, NOW())");
-            $conn->bindParam(":status", htmlspecialchars($data->status, ENT_NOQUOTES));
-            $conn->execute();
+            $save = $conn->prepare("INSERT INTO tblStatus(status, created_at) VALUES (:status, NOW())");
+            $save->bindParam(":status", $status_name);
+            $save->execute();
 
             return true;
         } catch (PDOException $e) {
@@ -47,13 +56,17 @@ class modelStatus{
     //Atualizar um status por ID
     public function update($idStatus, $data){
         try {
+
+            $status_name = htmlspecialchars($data["status"], ENT_NOQUOTES);
+            $id = filter_var($idStatus, FILTER_SANITIZE_NUMBER_INT);
+
             $conn = connectionDB::connect();
-            $conn->prepare("UPDATE tblStatus SET status = ':status', updated_at = NOW()
+            $update = $conn->prepare("UPDATE tblStatus SET status = :status, updated_at = NOW()
             WHERE id_status = :id_status");
 
-            $conn->bindParam(":status", htmlspecialchars($data->status, ENT_NOQUOTES));
-            $conn->bindParam("id_status", filter_var($idStatus, FILTER_SANITIZE_NUMBER_INT));
-            $conn->execute();
+            $update->bindParam(":status", $status_name );
+            $update->bindParam("id_status", $id );
+            $update->execute();
 
             return true;
         } catch (PDOException $e) {
