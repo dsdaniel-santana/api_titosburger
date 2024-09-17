@@ -47,7 +47,7 @@ class controllerStatus{
     }
 
     //Deletar um status existente
-    public function dele($idStatus){
+    public function delete($idStatus){
         try {
             $modelStatus = new modelStatus();
             return $modelStatus->delete($idStatus);
