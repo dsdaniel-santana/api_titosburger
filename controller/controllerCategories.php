@@ -13,8 +13,8 @@ class controllerCategories{
     //listar todas as categorias
     public function listAll(){
         try {
-            $controllerCategories = new controllerCategories();
-            return $controllerCategories->listAll();
+            $modelCategories = new modelCategories();
+            return $modelCategories->listAll();
         } catch (PDOException $e) {
             return false;
         }
@@ -23,8 +23,8 @@ class controllerCategories{
     //listar categoiras por ID
     public function searchById($id){
         try {
-            $controllerCategories = new controllerCategories();
-            return $controllerCategories->searchById($id);
+            $modelCategories = new modelCategories();
+            return $modelCategories->searchById($id);
         } catch (PDOException $e) {
             return false;
         }
@@ -33,8 +33,8 @@ class controllerCategories{
     //Atualizar categorias por ID
     public function update($id, $data){
         try {
-            $controllerCategories = new controllerCategories();
-            return $controllerCategories->update($id, $data);
+            $modelCategories = new modelCategories();
+            return $modelCategories->update($id, $data);
         } catch (PDOException $e) {
             return false;
         }
@@ -43,8 +43,8 @@ class controllerCategories{
     //deletar categorias por id
     public function delete($id){
         try {
-            $controllerCategories = new controllerCategories();
-            return $controllerCategories->delete($id);
+            $modelCategories = new modelCategories();
+            return $modelCategories->delete($id);
         } catch (PDOException $e) {
             return false;
         }
