@@ -68,6 +68,141 @@ class modelUsers{
         }
     }
 
+    public function saveGroup($id_user, $group){
+        try {
+            $conn = connectionDB::connect();
+            $saveGroup = $conn->prepare("INSERT INTO  tbluserroules VALUES (':id_user', ':group')");
+            $saveGroup->bindParam(':id_user', $id_user);
+            $saveGroup->bindParam(':group', $group);
+            $saveGroup->execute();
+
+            return true;
+        } catch (PDOException $e) {
+            return false;
+        }
+
+    }
+
+    public function auth($data){
+        try {
+
+            $username = htmlspecialchars($data["username"], ENT_NOQUOTES);
+
+            $conn = connectionDB::connect();
+            $auth = $conn->prepare("SELECT * FROM tblUsers WEHERE username = ':username' ");
+            $auth->bindParam('username', $username);
+            $auth->execute();
+            $result = $auth->fetch(PDO::FETCH_ASSOC);
+
+            if($result){
+                $passwordDB = $result->pass_user;
+
+                $validatePassword = password_verify($data->password . $this->salt, $passwordDB);
+
+                if($validatePassword){
+                    return $result;
+                } else {
+                    return false;    
+                }
+            }  
+            
+        } catch (PDOException $e) {
+            return false;
+            
+        }
+    }
+
+    public function generateTwoFactor($data){
+        try {
+
+            //dados recebidos da requisição
+            $username =    htmlspecialchars($data["username"], ENT_NOQUOTES);
+
+            //EXPIRAÇÃO DO TOKEN
+            $expired_at = date('d/m/y H:i:s', time() + (15*60));
+
+            
+            //GERAR TOKEN COM A DATA E HORA ATUAL ATUAL COM NOME DO USUÁRIO
+            $token = md5(date('d/m/y H:i:s') . $data->username);
+            $finalToken = substr($token, 6);
+
+            //GRAVAR OS DADOS DO TOKEN
+            $conn = connectionDB::connect();
+            $saveToken = $conn->prepare("INSERT INTO tblTokens VALUES(':token', ':username', ':expired')");
+            $saveToken->bindParam(':token', $finalToken);
+            $saveToken->bindParam(':username', $username);
+            $saveToken->bindParam(':expired', $expired_at);
+            $saveToken->execute();
+
+            if($saveToken){
+                //texto do corpo do email
+                $message = "Utilize o token: $finalToken";
+
+                $sendMail = mail($username, 'Token', $message);
+
+                if($sendMail){
+                    return true;
+                } else { 
+                    return false;
+                }
+                
+            }
+
+
+
+
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function validateTwoFactor($data){
+        try {
+            $token = htmlspecialchars($data["token"], ENT_NOQUOTES);
+            $username = htmlspecialchars($data["username"], ENT_NOQUOTES);
+
+            $conn = connectionDB::connect();
+            $validate = $conn->prepare("SELECT * FROM tbltokens WHERE username = ':username' AND token = ':token'");
+            $validate->bindParam('username', $username);
+            $validate->bindParam('token', $token);
+            $result = $validate->fetch(PDO::FETCH_ASSOC);
+            $validate->execute();
+
+            //obter data e hora atual
+            $now = date('d/m/y H:i:s');
+            //converter data atual para validar expiração
+            $date = strtotime($now);
+            //converter data expiração para validação
+            $expired_at = strtotime($result["expired_at"]);
+
+            //deletar o token após o uso
+            $deleteToken = $conn->prepare("DELETE  FROM tblTokens WHERE username = ':username', AND token = ':token'");
+            $deleteToken->bindParam(":username", $username);
+            $deleteToken->bindParam(":token", $token);
+            $deleteToken->execute();
+
+            // validar se a date e hora atual é superior a data de expiração
+            if($date > $expired_at){
+                return false;
+            }else{
+                return true;
+            }
+
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function listaAll(){
+        try {
+            $conn = connectionDB::connect();
+            $list = $conn->query("SELECT * FROM tblUsers");
+            $result = $list->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
 }
 
 
