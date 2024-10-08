@@ -198,10 +198,62 @@ class modelUsers{
             $conn = connectionDB::connect();
             $list = $conn->query("SELECT * FROM tblUsers");
             $result = $list->fetchAll(PDO::FETCH_ASSOC);
+
+            return $result;
+
         } catch (PDOException $e) {
             return false;
         }
     }
+
+    public function searchById($id){
+        try {
+            $id = filter_list($id, FILTER_SANITIZE_NUMBER_INT);
+
+            $conn = connectionDB::connect();
+            $search = $conn->prepare("SELECT * FROM tblUsers WHERE id_user = ':id_user'");
+            $search->bindParam(":id_user",$id_user);
+            $search->execute();
+            $result = $search->fetchAll(PDO::FETCH_ASSOC);
+
+            return $result;
+
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function delete($id){
+        try {
+            $id = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
+
+            $conn = connectionDB::connect();
+            $delete = $conn->prepare("DELETE FROM tblUsers WHERE id_user = 'id_user'");
+            $delete->bindParam(":id_user", $id_user);
+            $delete->execute();
+            
+            return true;
+
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function update($id, $data){
+        try {
+            $id = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
+            $firstname = htmlspecialchars($data["firstname"], ENT_NOQUOTES);
+            $lastname = htmlspecialchars($data["lastname"], ENT_NOQUOTES);
+            $mail = filter_var($data ["mail"], ENT_NOQUOTES);
+            $password = htmlspecialchars($data ["password"], ENT_NOQUOTES);
+            $status = filter_var($data["status"], FILTER_SANITIZE_NUMBER_INT);
+
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+
 
 }
 
