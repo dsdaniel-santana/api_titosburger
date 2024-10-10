@@ -10,7 +10,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         if(array_key_exists("status", $data)){
 
             $controllerStatus = new controllerStatus();
-        $save = $controllerStatus->save($data);
+            $save = $controllerStatus->save($data);
 
         if($save){
             $msg = array("msg"=> "Created status with success.");

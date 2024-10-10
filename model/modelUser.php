@@ -1,13 +1,13 @@
 <?php 
 
 include_once("../services/connectionDB.php");
-include_once("../model/modelUser.php");
+
 
 class modelUsers{
 
     protected $salt = "Tit0s@2024";
 
-    public function salve($data){
+    public function save($data){
         try {
             
             $firstname = htmlspecialchars($data["firstname"], ENT_NOQUOTES);
@@ -193,7 +193,7 @@ class modelUsers{
         }
     }
 
-    public function listaAll(){
+    public function listAll(){
         try {
             $conn = connectionDB::connect();
             $list = $conn->query("SELECT * FROM tblUsers");
@@ -247,6 +247,18 @@ class modelUsers{
             $mail = filter_var($data ["mail"], ENT_NOQUOTES);
             $password = htmlspecialchars($data ["password"], ENT_NOQUOTES);
             $status = filter_var($data["status"], FILTER_SANITIZE_NUMBER_INT);
+
+            $conn = connectionDB::connect();
+            $update = $conn->prepare("UPDATE tblUsers SET firstname = ':firstname', lastname = ':lastname', mail = ':mail', pass_user = ':password', id_status = ':id_status', updated_at = NOW(), WHERE id_user = ':id_user' ");
+            $update->bindParam(':firstname', $firstname);
+            $update->bindParam(':lastname', $lastname);
+            $update->bindParam(':mail', $mail);
+            $update->bindParam(':password', $password);
+            $update->bindParam(':status', $status);
+            $update->execute();
+
+            return true;
+
 
         } catch (PDOException $e) {
             return false;
