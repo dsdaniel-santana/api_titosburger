@@ -1,154 +1,158 @@
-<?php 
+<?php
 
 include_once("../services/connectionDB.php");
 
-
-class modelUsers{
+class modelUsers {
 
     protected $salt = "Tit0s@2024";
 
-    public function save($data){
+    public function save($data) {
         try {
-            
             $firstname = htmlspecialchars($data["firstname"], ENT_NOQUOTES);
-            $lastname = htmlspecialchars($data["lastname"], ENT_NOQUOTES);
-            //Usuario e email= username
-            $username = htmlspecialchars($data["username"], ENT_NOQUOTES);
-            $password = htmlspecialchars($data["password"], ENT_NOQUOTES);
-            $birthday = htmlspecialchars($data["birthday"], ENT_NOQUOTES);
-            $cpf = filter_var($data["cpf"], FILTER_SANITIZE_NUMBER_INT);
-            //permissão
+            $lastname  = htmlspecialchars($data["lastname"], ENT_NOQUOTES);
+            //Usuário e E-mail = username
+            $username  = htmlspecialchars($data["username"], ENT_NOQUOTES);
+            $mail  = htmlspecialchars($data["username"], ENT_NOQUOTES);
+            $password  = htmlspecialchars($data["password"], ENT_NOQUOTES);
+            $birthday  = htmlspecialchars($data["birthday"], ENT_NOQUOTES);
+            $cpf       = filter_var($data["cpf"], FILTER_SANITIZE_NUMBER_INT);
+            //Permissao
             $permission = htmlspecialchars($data["permission"], ENT_NOQUOTES);
 
-
             //Irá chamar a função de criptografia de senha
-            $password_Secure = $this->tokenize($password);
+            $password_secure = $this->tokenize($password);
 
             $conn = connectionDB::connect();
-            $save = $conn->prepare("INSERT INTO tblUsers VALUES(':firstname',':lastname',':username',':password_secure',':birthday', ':cpf', ':mail', 2, NOW() )");
-            $save->bindParam(":firstname",$firstname);
-            $save->bindParam(":lastname",$lastname);
-            $save->bindParam(":username",$username);
-            $save->bindParam(":password_secure",$password_secure);
-            $save->bindParam(":birthday",$birthday);
-            $save->bindParam(":cpf",$cpf);
-            $save->bindParam(":mail",$mail);
+            $save = $conn->prepare("INSERT INTO tblUsers (firstname, lastname, username, pass_user, birthday, cpf, mail, id_status, created_at) VALUES (:firstname, :lastname, :username, :password_secure, :birthday, :cpf, :mail, 2, NOW())");
+            $save->bindParam(":firstname", $firstname);
+            $save->bindParam(":lastname", $lastname);
+            $save->bindParam(":username", $username);
+            $save->bindParam(":password_secure", $password_secure);
+            $save->bindParam(":birthday", $birthday);
+            $save->bindParam(":cpf", $cpf);
+            $save->bindParam(":mail", $mail);
             $save->execute();
 
+            $data_user = $this->searchUserByEmail($username);
 
-        } catch (PDOException $e) {
+            $this->saveGroup($data_user['id_user'], $permission);
+
+            return true;
+
+        } catch (PDOException $e) {            
+            //echo $e;
             return false;
+            
         }
     }
 
     protected function tokenize($value){
         try {
 
-            $combinePassword = $value . $this->salt;
+            $combinedPassword = $value . $this->salt;
+         
+            return password_hash($combinedPassword, PASSWORD_BCRYPT);
+
+        } catch (\Throwable $th) {
+            return false;
+        }
+    }
+
+    private function searchUserByEmail($username) {
+        try {
             
-            return password_hash($combinePassword, PASSWORD_BCRYPT);
-            
+            $conn = connectionDB::connect();
+            $search = $conn->prepare("SELECT id_user FROM tblUsers WHERE username = :username");
+            $search->bindParam(':username', $username);
+            $search->execute();
+            $result = $search->fetch(PDO::FETCH_ASSOC);
+
+            return $result;
+
         } catch (PDOException $e) {
             return false;
         }
     }
 
-    private function searchUserByEmail($username){
+    public function saveGroup($id_user, $group) {
         try {
-            $conn = connectionDB::connect();
-            $search = $conn->prepare("SELECT id_user FROM tblUsers WHERE username =':username' ");
-            $search->bindParam(":username", $username);
-            $search->execute();
-            $result = $search->fetch(PDO::FETCH_ASSOC);
-
-            return $result;
             
-        } catch (\PDOException $e) {
-            return false;
-        }
-    }
-
-    public function saveGroup($id_user, $group){
-        try {
             $conn = connectionDB::connect();
-            $saveGroup = $conn->prepare("INSERT INTO  tbluserroules VALUES (':id_user', ':group')");
+            $saveGroup = $conn->prepare("INSERT INTO tblusersroles (`id_user`, `group`, `created_at`) VALUES (:id_user, :group, NOW()) ");
             $saveGroup->bindParam(':id_user', $id_user);
             $saveGroup->bindParam(':group', $group);
             $saveGroup->execute();
 
             return true;
+
         } catch (PDOException $e) {
             return false;
         }
-
     }
 
-    public function auth($data){
+    public function auth($data) {
         try {
 
             $username = htmlspecialchars($data["username"], ENT_NOQUOTES);
-
+            
             $conn = connectionDB::connect();
-            $auth = $conn->prepare("SELECT * FROM tblUsers WEHERE username = ':username' ");
-            $auth->bindParam('username', $username);
+            $auth = $conn->prepare("SELECT * FROM tblUsers WHERE username = :username ");
+            $auth->bindParam(':username', $username);
             $auth->execute();
             $result = $auth->fetch(PDO::FETCH_ASSOC);
 
-            if($result){
+            if($result) {
                 $passwordDB = $result->pass_user;
 
                 $validatePassword = password_verify($data->password . $this->salt, $passwordDB);
 
-                if($validatePassword){
+                if($validatePassword) {
                     return $result;
                 } else {
-                    return false;    
+                    return false;
                 }
-            }  
-            
+            } else {
+                return false;
+            }
+
         } catch (PDOException $e) {
             return false;
-            
         }
     }
 
-    public function generateTwoFactor($data){
+    public function generateTwoFactor($data) {
         try {
 
-            //dados recebidos da requisição
-            $username =    htmlspecialchars($data["username"], ENT_NOQUOTES);
+            //Dados recebidos da requisição
+            $username = htmlspecialchars($data["username"], ENT_NOQUOTES);
 
-            //EXPIRAÇÃO DO TOKEN
-            $expired_at = date('d/m/y H:i:s', time() + (15*60));
-
+            //Expiração do token em 15 minutos
+            $expired_at = date('d/m/Y H:i:s', time() + (15 * 60));
             
-            //GERAR TOKEN COM A DATA E HORA ATUAL ATUAL COM NOME DO USUÁRIO
-            $token = md5(date('d/m/y H:i:s') . $data->username);
+            //Gerar token com a data e hora atual com nome do usuário
+            $token = md5(date('d/m/Y H:i:s') . $data->username );
             $finalToken = substr($token, 6);
 
-            //GRAVAR OS DADOS DO TOKEN
+            //Gravar os dados do token
             $conn = connectionDB::connect();
-            $saveToken = $conn->prepare("INSERT INTO tblTokens VALUES(':token', ':username', ':expired')");
+            $saveToken = $conn->prepare("INSERT INTO tblTokens VALUES (:token, :username, :expired) ");
             $saveToken->bindParam(':token', $finalToken);
             $saveToken->bindParam(':username', $username);
             $saveToken->bindParam(':expired', $expired_at);
             $saveToken->execute();
 
-            if($saveToken){
-                //texto do corpo do email
+            if($saveToken) {
+                //Texto do corpo do e-mail
                 $message = "Utilize o token: $finalToken";
 
                 $sendMail = mail($username, 'Token', $message);
 
-                if($sendMail){
+                if($sendMail) {
                     return true;
-                } else { 
+                } else {
                     return false;
                 }
-                
             }
-
-
 
 
         } catch (PDOException $e) {
@@ -156,35 +160,36 @@ class modelUsers{
         }
     }
 
-    public function validateTwoFactor($data){
+    public function validateTwoFactor($data) {
         try {
+        
             $token = htmlspecialchars($data["token"], ENT_NOQUOTES);
             $username = htmlspecialchars($data["username"], ENT_NOQUOTES);
-
+            
             $conn = connectionDB::connect();
-            $validate = $conn->prepare("SELECT * FROM tbltokens WHERE username = ':username' AND token = ':token'");
-            $validate->bindParam('username', $username);
-            $validate->bindParam('token', $token);
-            $result = $validate->fetch(PDO::FETCH_ASSOC);
+            $validate = $conn->prepare("SELECT * FROM tblTokens WHERE username = :username AND token = :token");
+            $validate->bindParam(':username', $username);
+            $validate->bindParam(':token', $token);
             $validate->execute();
+            $result = $validate->fetch(PDO::FETCH_ASSOC);
 
-            //obter data e hora atual
-            $now = date('d/m/y H:i:s');
-            //converter data atual para validar expiração
-            $date = strtotime($now);
-            //converter data expiração para validação
-            $expired_at = strtotime($result["expired_at"]);
+            //Obter data e hora atual
+            $now = date('d/m/Y H:i:s');
+            //Converter data atual para validar a expiração
+            $date = strtotime($now); //121354545
+            //Converter data expiração para validar
+            $expired_at = strtotime($result["expired_at"]); //112545454           
 
-            //deletar o token após o uso
-            $deleteToken = $conn->prepare("DELETE  FROM tblTokens WHERE username = ':username', AND token = ':token'");
+            //Deletar o token após uso
+            $deleteToken = $conn->prepare("DELETE FROM tblTokens WHERE username = :username AND token = :token");
             $deleteToken->bindParam(":username", $username);
             $deleteToken->bindParam(":token", $token);
             $deleteToken->execute();
 
-            // validar se a date e hora atual é superior a data de expiração
-            if($date > $expired_at){
+            //Validar se a date e hora atual é superior a data expiração
+            if($date > $expired_at) {
                 return false;
-            }else{
+            } else {
                 return true;
             }
 
@@ -193,8 +198,9 @@ class modelUsers{
         }
     }
 
-    public function listAll(){
+    public function listAll() {
         try {
+            
             $conn = connectionDB::connect();
             $list = $conn->query("SELECT * FROM tblUsers");
             $result = $list->fetchAll(PDO::FETCH_ASSOC);
@@ -206,15 +212,16 @@ class modelUsers{
         }
     }
 
-    public function searchById($id){
+    public function searchById($id) {
         try {
-            $id = filter_list($id, FILTER_SANITIZE_NUMBER_INT);
+            
+            $id = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
 
             $conn = connectionDB::connect();
-            $search = $conn->prepare("SELECT * FROM tblUsers WHERE id_user = ':id_user'");
-            $search->bindParam(":id_user",$id_user);
+            $search = $conn->prepare("SELECT * FROM tblUsers WHERE id_user = :id_user");
+            $search->bindParam(":id_user", $id);
             $search->execute();
-            $result = $search->fetchAll(PDO::FETCH_ASSOC);
+            $result = $search->fetch(PDO::FETCH_ASSOC);
 
             return $result;
 
@@ -223,33 +230,35 @@ class modelUsers{
         }
     }
 
-    public function delete($id){
+    public function delete($id) {
         try {
+         
             $id = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
 
             $conn = connectionDB::connect();
-            $delete = $conn->prepare("DELETE FROM tblUsers WHERE id_user = 'id_user'");
-            $delete->bindParam(":id_user", $id_user);
+            $delete = $conn->prepare("DELETE FROM tblUsers WHERE id_user = :id_user");
+            $delete->bindParam(":id_user", $id);
             $delete->execute();
-            
-            return true;
 
+            return true;
+            
         } catch (PDOException $e) {
             return false;
         }
     }
 
-    public function update($id, $data){
+    public function update($id, $data) {
         try {
+            
             $id = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
             $firstname = htmlspecialchars($data["firstname"], ENT_NOQUOTES);
             $lastname = htmlspecialchars($data["lastname"], ENT_NOQUOTES);
-            $mail = filter_var($data ["mail"], ENT_NOQUOTES);
-            $password = htmlspecialchars($data ["password"], ENT_NOQUOTES);
+            $mail = htmlspecialchars($data["mail"], ENT_NOQUOTES);
+            $password = htmlspecialchars($data["password"], ENT_NOQUOTES);
             $status = filter_var($data["status"], FILTER_SANITIZE_NUMBER_INT);
 
             $conn = connectionDB::connect();
-            $update = $conn->prepare("UPDATE tblUsers SET firstname = ':firstname', lastname = ':lastname', mail = ':mail', pass_user = ':password', id_status = ':id_status', updated_at = NOW(), WHERE id_user = ':id_user' ");
+            $update = $conn->prepare("UPDATE tblUsers SET firstname = :firstname, lastname = :lastname, mail = :mail, pass_user = :password, id_status = :status, updated_at = NOW() WHERE id_user = :id_user ");
             $update->bindParam(':firstname', $firstname);
             $update->bindParam(':lastname', $lastname);
             $update->bindParam(':mail', $mail);
@@ -259,16 +268,9 @@ class modelUsers{
 
             return true;
 
-
         } catch (PDOException $e) {
             return false;
         }
     }
 
-
-
 }
-
-
-
-?>
