@@ -77,7 +77,7 @@ class controllerOrders{
     public function deleteCart ($id_cart){
         try {
             $modelOrders = new modelOrders();
-            return $modelOrders->deleteCart ($$id_cart);
+            return $modelOrders->deleteCart ($id_cart);
         } catch (PDOException $e) {
             return false;
         }
@@ -85,7 +85,7 @@ class controllerOrders{
 
 
 
-    
+
 }
 
 
